@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<!--
+   U  R  L    B  U  I  L  D  E  R
+
+   Reading the source? Good.
+
+   This builder generates an iframe URL for the Gapps Embed launcher. Pick
+   apps, theme, optional Workspace domain — the embed string updates live.
+   The whole tool is one HTML page with vanilla JS. No backend, no requests,
+   no telemetry. The URL you generate is the URL you ship.
+
+       github.com/benchkit/gapps-embed   ·   MIT-licensed
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gapps Embed Builder</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+    color: #202124;
+    background: #fff;
+    line-height: 1.6;
+  }
+
+  /* ── Header (dark theme) ── */
+  header {
+    background: #16273A;                       /* --navy */
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding: 14px 32px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+
+  header a.wordmark {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: inherit;
+    border-radius: 6px;
+    padding: 2px 6px;
+    margin: 0 -6px;
+    transition: background 0.15s;
+  }
+
+  /* Escape hatch back to the project page (and thus the site nav) —
+     the builder itself is a chrome-free app surface, so this link is
+     the way out. Give it a hover affordance so it reads as clickable. */
+  header a.wordmark:hover {
+    background: rgba(255,255,255,0.05);
+    text-decoration: none;
+  }
+
+  header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #E6EEF5;
+    letter-spacing: 0.01em;
+  }
+
+  header .badge {
+    font-size: 11px;
+    background: rgba(60, 220, 192, 0.12);      /* --pill-bg */
+    color: #3CDCC0;                            /* --pill-text */
+    padding: 3px 9px;
+    border-radius: 99px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  header .page-title {
+    font-size: 13px;
+    color: #9BA9B8;
+    padding-left: 14px;
+    margin-left: 4px;
+    border-left: 1px solid rgba(255,255,255,0.08);
+  }
+
+  header .spacer { flex: 1; }
+
+  header .header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  /* ── App shell ── */
+  .shell {
+    display: flex;
+    height: calc(100vh - 64px);
+    overflow: hidden;
+  }
+
+  /* ── Sidebar (controls) ── */
+  .sidebar {
+    width: 300px;
+    flex-shrink: 0;
+    border-right: 1px solid #e8eaed;
+    overflow-y: auto;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-section {
+    padding: 18px 20px;
+    border-bottom: 1px solid #e8eaed;
+  }
+
+  .sidebar-section:last-child {
+    border-bottom: none;
+  }
+
+  .sidebar-section h3 {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #5f6368;
+    margin-bottom: 14px;
+  }
+
+  .field {
+    margin-bottom: 12px;
+  }
+
+  .field:last-child { margin-bottom: 0; }
+
+  .field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #202124;
+    margin-bottom: 4px;
+  }
+
+  .field label .hint {
+    font-weight: 400;
+    color: #80868b;
+    font-size: 12px;
+  }
+
+  .field select,
+  .field input[type="text"] {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid #dadce0;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 13px;
+    color: #202124;
+    background: #fff;
+    transition: border-color 0.15s;
+  }
+
+  .field select:focus,
+  .field input[type="text"]:focus {
+    outline: none;
+    border-color: #1f73e6;
+    box-shadow: 0 0 0 2px rgba(31,115,230,0.12);
+  }
+
+  .field small {
+    display: block;
+    font-size: 11px;
+    color: #80868b;
+    margin-top: 3px;
+  }
+
+  /* Color row */
+  .color-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+
+  .color-field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: #5f6368;
+    margin-bottom: 4px;
+  }
+
+  .color-swatch {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border: 1px solid #dadce0;
+    border-radius: 6px;
+    cursor: pointer;
+    background: #fff;
+    transition: border-color 0.15s;
+  }
+
+  .color-swatch:hover { border-color: #adb5bd; }
+
+  .color-swatch input[type="color"] {
+    width: 18px;
+    height: 18px;
+    border: none;
+    padding: 0;
+    background: none;
+    cursor: pointer;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .color-swatch span {
+    font-size: 11px;
+    font-family: 'Menlo', 'Consolas', monospace;
+    color: #5f6368;
+    white-space: nowrap;
+  }
+
+  /* ── Buttons (header lives on dark; sidebar/preview on light) ── */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 18px;
+    background: linear-gradient(135deg, #1FA9A5, #3CDCC0);
+    color: #0E1B2A;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 2px 8px rgba(60,220,192,0.18);
+    font-family: inherit;
+    white-space: nowrap;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(60,220,192,0.3);
+  }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 18px;
+    border: 1px solid rgba(255,255,255,0.18);
+    color: #E6EEF5;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    background: transparent;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+
+  .btn-secondary:hover {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.28);
+  }
+
+  .action-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  /* ── Resize handle ── */
+  .resize-handle {
+    width: 5px;
+    flex-shrink: 0;
+    background: #e8eaed;
+    cursor: col-resize;
+    transition: background 0.15s;
+    position: relative;
+  }
+
+  .resize-handle:hover,
+  .resize-handle.dragging {
+    background: #1f73e6;
+  }
+
+  /* ── Preview pane ── */
+  .preview-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #f8f9fa;
+    overflow: hidden;
+  }
+
+  .preview-toolbar {
+    height: 44px;
+    background: #fff;
+    border-bottom: 1px solid #e8eaed;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .preview-url {
+    flex: 1;
+    background: #f8f9fa;
+    border: 1px solid #e8eaed;
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-family: 'Menlo', 'Consolas', monospace;
+    font-size: 11px;
+    color: #5f6368;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: default;
+    user-select: all;
+  }
+
+  /* Scroll region that holds the resizable preview box. Centers the box and
+     lets it scroll into view if dragged larger than the pane. */
+  .preview-scroll {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  /* The resizable preview box — fills most of the pane by default; drag the
+     bottom-right grip to shrink it to real-world sizes (matching the
+     width/height you'll put in your iframe). overflow:hidden keeps corners
+     clean. The box starts at the pane's full size, then the user can drag
+     smaller; min keeps it usable. */
+  .preview-box {
+    position: relative;
+    resize: both;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    min-width: 280px;
+    min-height: 200px;
+    background: #fff;
+    border: 1px solid #e8eaed;
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    flex-shrink: 0;
+  }
+
+  /* Live readout of the box's current size — helps users pick iframe dims. */
+  .preview-dims {
+    position: absolute;
+    bottom: 8px;
+    right: 14px;
+    font-family: 'Menlo', 'Consolas', monospace;
+    font-size: 10px;
+    color: #5f6368;
+    background: rgba(248,249,250,0.92);
+    border: 1px solid #e8eaed;
+    border-radius: 5px;
+    padding: 2px 7px;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .preview-box iframe {
+    border: none;
+    width: 100%;
+    height: 100%;
+    display: block;
+    background: #fff;
+  }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #202124;
+    color: #fff;
+    padding: 9px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.18s, transform 0.18s;
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+</style>
+<script src="src/apps.js"></script>
+<script src="src/filter.js"></script>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="wordmark" title="Back to Gapps Embed">
+    <h1>Gapps Embed</h1>
+    <span class="badge">v1.0.0</span>
+  </a>
+  <span class="page-title">URL Builder</span>
+  <div class="spacer"></div>
+  <div class="header-actions">
+    <button class="btn-secondary" onclick="resetForm()">Reset</button>
+    <button class="btn-secondary" onclick="copyURL()">Copy URL</button>
+    <button class="btn-primary" onclick="copyEmbed()">Copy embed code</button>
+  </div>
+</header>
+
+<div class="shell">
+
+  <!-- Sidebar: Controls -->
+  <aside class="sidebar">
+
+    <div class="sidebar-section">
+      <h3>Filter</h3>
+      <div class="field">
+        <label for="filter">Tag or category</label>
+        <select id="filter">
+          <option value="">All apps</option>
+          <option value="gmail">Personal Gmail</option>
+          <option value="ws-legacy">Workspace Legacy</option>
+          <option value="ws-starter">Workspace Starter</option>
+          <option value="ws-standard">Workspace Standard</option>
+          <option value="ws-plus">Workspace Plus</option>
+          <option value="ws-enterprise">Workspace Enterprise</option>
+          <option value="ws-education">Workspace Education</option>
+          <option value="ws-essentials">Workspace Essentials</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="apps">Specific apps <span class="hint">— overrides filter</span></label>
+        <input type="text" id="apps" placeholder="mail, docs, sheets">
+        <small>Comma-separated keys, shown in order</small>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Domain</h3>
+      <div class="field">
+        <label for="domain">Workspace domain</label>
+        <input type="text" id="domain" placeholder="example.com">
+        <small>Rewrites URLs to AccountChooser</small>
+      </div>
+      <div class="field">
+        <label for="custom">Custom subdomain apps</label>
+        <input type="text" id="custom" placeholder="mail, calendar, drive">
+        <small>Uses https://app.domain/ instead</small>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Colors</h3>
+      <div class="field" style="margin-bottom: 14px;">
+        <label for="preset">Preset <span class="hint">— pick a starting palette</span></label>
+        <select id="preset">
+          <option value="custom">Custom</option>
+          <option value="google" selected>Google default</option>
+          <option value="default">Default theme</option>
+          <option value="solarized">Solarized</option>
+          <option value="github-dark">GitHub Dark</option>
+        </select>
+      </div>
+      <div class="color-row">
+        <div class="color-field">
+          <label>Tile</label>
+          <div class="color-swatch">
+            <input type="color" id="tile" value="#ffffff">
+            <span id="tile-hex">#ffffff</span>
+          </div>
+        </div>
+        <div class="color-field">
+          <label>Text</label>
+          <div class="color-swatch">
+            <input type="color" id="text" value="#3c4043">
+            <span id="text-hex">#3c4043</span>
+          </div>
+        </div>
+        <div class="color-field">
+          <label>Hover</label>
+          <div class="color-swatch">
+            <input type="color" id="hover" value="#f1f3f4">
+            <span id="hover-hex">#f1f3f4</span>
+          </div>
+        </div>
+        <div class="color-field">
+          <label>Text on hover</label>
+          <div class="color-swatch">
+            <input type="color" id="texthover" value="#3c4043">
+            <span id="texthover-hex">#3c4043</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- Resize handle -->
+  <div class="resize-handle" id="resize-handle"></div>
+
+  <!-- Preview pane -->
+  <div class="preview-pane">
+    <div class="preview-toolbar">
+      <div class="preview-url" id="preview-url">gapps-launcher.html</div>
+    </div>
+    <div class="preview-scroll">
+      <div class="preview-box" id="preview-box">
+        <div class="preview-dims" id="preview-dims" aria-hidden="true"></div>
+        <iframe id="preview" src="gapps-launcher.html" title="Live embed preview"></iframe>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const BASE = 'gapps-launcher.html';
+
+  function buildURL() {
+    const params = new URLSearchParams();
+
+    const filter = document.getElementById('filter').value;
+    if (filter) params.set('filter', filter);
+
+    const apps = document.getElementById('apps').value.trim();
+    if (apps) {
+      const list = apps.split(',').map(a => a.trim().toLowerCase()).filter(a => /^[a-z0-9-]+$/.test(a)).join(',');
+      if (list) params.set('apps', list);
+    }
+
+    const domain = document.getElementById('domain').value.trim().toLowerCase();
+    if (domain) {
+      const DOMAIN_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i;
+      if (DOMAIN_RE.test(domain)) params.set('domain', domain);
+    }
+
+    const custom = document.getElementById('custom').value.trim();
+    if (custom) {
+      const list = custom.split(',').map(a => a.trim().toLowerCase()).filter(a => /^[a-z0-9-]+$/.test(a)).join(',');
+      if (list) params.set('custom', list);
+    }
+
+    const tile = document.getElementById('tile').value;
+    if (tile !== '#ffffff') params.set('tile', tile.slice(1));
+
+    const text = document.getElementById('text').value;
+    if (text !== '#3c4043') params.set('text', text.slice(1));
+
+    const hover = document.getElementById('hover').value;
+    if (hover !== '#f1f3f4') params.set('hover', hover.slice(1));
+
+    const texthover = document.getElementById('texthover').value;
+    // Only emit texthover when it differs from text — otherwise launcher's
+    // default behavior (label stays same color on hover) is what we want.
+    if (texthover !== text) params.set('texthover', texthover.slice(1));
+
+    return BASE + (params.toString() ? '?' + params.toString() : '');
+  }
+
+  function update() {
+    const url = buildURL();
+    document.getElementById('preview-url').textContent = url;
+    document.getElementById('preview').src = url;
+  }
+
+  // Absolute URL to the launcher with the current config, for the snippet.
+  function absoluteURL() {
+    const base = window.location.origin + window.location.pathname.replace(/\/[^/]+$/, '/');
+    return base + buildURL();
+  }
+
+  // Paste-ready embed snippet. Width stays 100% (responsive on the host
+  // page); height is the size the user dragged the preview to.
+  function buildEmbed() {
+    return '<iframe src="' + absoluteURL() + '"\n        ' +
+           'style="border:none; width:100%; height:' + previewHeight + 'px;"></iframe>';
+  }
+
+  function copyEmbed() {
+    navigator.clipboard.writeText(buildEmbed())
+      .then(() => showToast('Embed code copied — height ' + previewHeight + 'px'))
+      .catch(() => showToast('Copy failed'));
+  }
+
+  // Just the launcher URL — for templates, links, or CMS fields that wrap
+  // the iframe themselves.
+  function copyURL() {
+    navigator.clipboard.writeText(absoluteURL())
+      .then(() => showToast('URL copied to clipboard'))
+      .catch(() => showToast('Copy failed'));
+  }
+
+  function resetForm() {
+    document.getElementById('filter').value = '';
+    document.getElementById('apps').value = '';
+    document.getElementById('domain').value = '';
+    document.getElementById('custom').value = '';
+    document.getElementById('tile').value = '#ffffff';
+    document.getElementById('text').value = '#3c4043';
+    document.getElementById('hover').value = '#f1f3f4';
+    document.getElementById('texthover').value = '#3c4043';
+    document.getElementById('preset').value = 'google';
+    syncHex();
+    update();
+  }
+
+  function syncHex() {
+    ['tile', 'text', 'hover', 'texthover'].forEach(id => {
+      document.getElementById(id + '-hex').textContent = document.getElementById(id).value;
+    });
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // Live size readout on the resizable preview box. Tracks the current
+  // height so the copied <iframe> snippet bakes in the height the user
+  // dragged to (width stays 100% so the embed is responsive on their site).
+  let previewHeight = 460;   // matches the default box height
+  (function () {
+    const box = document.getElementById('preview-box');
+    const dims = document.getElementById('preview-dims');
+    if (!box) return;
+    if (typeof ResizeObserver === 'undefined') {
+      if (dims) dims.textContent = '';
+      return;
+    }
+    const ro = new ResizeObserver(function (entries) {
+      const r = entries[0].contentRect;
+      previewHeight = Math.round(r.height);
+      if (dims) dims.textContent = Math.round(r.width) + ' × ' + previewHeight;
+    });
+    ro.observe(box);
+  })();
+
+  // Resizable sidebar
+  (function () {
+    const handle = document.getElementById('resize-handle');
+    const sidebar = document.querySelector('.sidebar');
+    const shell = document.querySelector('.shell');
+    let dragging = false;
+    let startX, startWidth;
+
+    handle.addEventListener('mousedown', e => {
+      dragging = true;
+      startX = e.clientX;
+      startWidth = sidebar.offsetWidth;
+      handle.classList.add('dragging');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      // Cover iframe to prevent it stealing mouse events
+      document.getElementById('preview').style.pointerEvents = 'none';
+    });
+
+    document.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      const delta = e.clientX - startX;
+      const newWidth = Math.min(Math.max(220, startWidth + delta), shell.offsetWidth - 300);
+      sidebar.style.width = newWidth + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      dragging = false;
+      handle.classList.remove('dragging');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      document.getElementById('preview').style.pointerEvents = '';
+    });
+  })();
+
+  ['filter', 'apps', 'domain', 'custom'].forEach(id => {
+    document.getElementById(id).addEventListener('input', update);
+    document.getElementById(id).addEventListener('change', update);
+  });
+
+  const PRESETS = {
+    'google':      { tile: '#ffffff', text: '#3c4043', hover: '#f1f3f4', texthover: '#3c4043' },
+    'default': { tile: '#ffffff', text: '#202124', hover: '#f1f3f4', texthover: '#202124' },
+    'solarized':   { tile: '#FDF6E3', text: '#586E75', hover: '#EEE8D5', texthover: '#586E75' },
+    'github-dark': { tile: '#0D1117', text: '#C9D1D9', hover: '#161B22', texthover: '#C9D1D9' }
+  };
+
+  document.getElementById('preset').addEventListener('change', e => {
+    const p = PRESETS[e.target.value];
+    if (!p) return;
+    document.getElementById('tile').value      = p.tile;
+    document.getElementById('text').value      = p.text;
+    document.getElementById('hover').value     = p.hover;
+    document.getElementById('texthover').value = p.texthover;
+    syncHex();
+    update();
+  });
+
+  ['tile', 'text', 'hover', 'texthover'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => {
+      // Manual color edit → drop out of any preset
+      document.getElementById('preset').value = 'custom';
+      syncHex();
+      update();
+    });
+  });
+
+  update();
+</script>
+
+</body>
+</html>

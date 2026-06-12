@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<!--
+   G  A  P  P  S    E  M  B  E  D
+
+   Reading the source? Good.
+   This is one HTML page, vanilla JS, one PNG sprite. No framework, no build.
+   Drop the iframe on any site, theme it via three URL params, ship.
+   Documentation, the actual source, and contribution guide:
+       github.com/benchkit/gapps-embed   ·   MIT-licensed
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gapps Embed</title>
+<meta name="description" content="A lightweight, themeable toolkit for embedding a Google apps grid on any site. Free, open source, no telemetry, no build step.">
+
+<style>
+  :root {
+    --navy:        #16273A;
+    --navy-deep:   #0E1B2A;
+    --navy-soft:   #1E3147;
+    --teal:        #1FA9A5;
+    --teal-bright: #3CDCC0;
+    --ink:         #E6EEF5;
+    --ink-mute:    #9BA9B8;
+    --line:        rgba(255,255,255,0.08);
+    --tile:        #1A2C42;
+    --pill-bg:     rgba(60, 220, 192, 0.12);
+    --pill-text:   #3CDCC0;
+    --soon-bg:     rgba(255, 197, 100, 0.12);
+    --soon-text:   #FFD27A;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* Universal focus ring — teal, visible only on keyboard focus. */
+  :focus { outline: none; }
+  :focus-visible {
+    outline: 2px solid var(--teal-bright);
+    outline-offset: 3px;
+    border-radius: 4px;
+    transition: outline-offset 0.12s ease-out;
+  }
+  .btn-primary:focus-visible,
+  .btn-secondary:focus-visible {
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
+  .theme-btn:focus-visible {
+    outline-offset: 2px;
+    border-radius: 999px;
+  }
+  .skip-link {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    padding: 10px 18px;
+    background: var(--teal-bright);
+    color: var(--navy-deep);
+    font-weight: 600;
+    font-size: 14px;
+    border-radius: 8px;
+    text-decoration: none;
+    transform: translateY(-120%);
+    transition: transform 0.18s ease-out;
+    z-index: 100;
+  }
+  .skip-link:focus-visible {
+    transform: translateY(0);
+    outline: none;
+  }
+
+  /* App-shell: non-scrolling flex column; header + footer pinned, a single
+     .content-well between them is the only scroll region. Matches the catalog
+     and home so the chrome stays put as content scrolls under it. */
+  html, body { height: 100%; }
+  body {
+    background: var(--navy-deep);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .content-well {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-padding-top: 16px;
+  }
+
+  a { color: var(--teal-bright); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── Header ── */
+  header {
+    background: var(--navy);
+    border-bottom: 1px solid var(--line);
+    padding: 0 32px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-shrink: 0;
+  }
+
+  header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: 0.01em;
+  }
+
+  header h1 .by {
+    font-weight: 400;
+    color: var(--ink-mute);
+    font-size: 13px;
+    margin-left: 4px;
+  }
+
+  header .ver {
+    font-size: 11px;
+    background: var(--pill-bg);
+    color: var(--pill-text);
+    padding: 3px 9px;
+    border-radius: 99px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  header nav {
+    margin-left: auto;
+    display: flex;
+    gap: 22px;
+    font-size: 14px;
+  }
+
+  header nav a {
+    color: var(--ink-mute);
+    transition: color 0.15s;
+    padding: 2px 0;
+  }
+
+  header nav a:hover {
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  header nav a.is-active {
+    color: var(--teal-bright);
+    font-weight: 600;
+    border-bottom: 2px solid var(--teal-bright);
+  }
+
+  /* ── Hero ── */
+  .hero {
+    text-align: center;
+    padding: 64px 32px 80px;
+    max-width: 1000px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  /* Ignition flare — Gapps Embed just went live, so it gets the launch
+     ceremony: the flare ignites bright on load, then settles to the 0.18
+     residual that subpages otherwise carry statically. When the next product
+     ships, this treatment moves to it and Gapps drops back to static residual. */
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 420px;
+    height: 420px;
+    background: radial-gradient(circle, rgba(60,220,192,1) 0%, rgba(60,220,192,0) 70%);
+    opacity: 0.18;
+    pointer-events: none;
+    z-index: 0;
+    animation: flare-ignite 1.6s ease-out 1 both;
+  }
+
+  @keyframes flare-ignite {
+    0%   { opacity: 0;    transform: translateX(-50%) scale(0.7); }
+    35%  { opacity: 0.55; transform: translateX(-50%) scale(1.08); }
+    100% { opacity: 0.18; transform: translateX(-50%) scale(1); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero::before { animation: none; opacity: 0.18; }
+  }
+
+  .hero > * { position: relative; z-index: 1; }
+
+  /* Launch status notation — "NOW LIVE" pill, teal (live) colors. */
+  .status-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--pill-text);
+    background: var(--pill-bg);
+    padding: 6px 14px;
+    border-radius: 99px;
+  }
+
+  .hero h2 {
+    font-size: 48px;
+    font-weight: 300;
+    line-height: 1.15;
+    margin-bottom: 22px;
+    letter-spacing: -0.015em;
+  }
+
+  .hero h2 strong {
+    font-weight: 700;
+    background: linear-gradient(90deg, var(--teal), var(--teal-bright));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .hero p {
+    font-size: 18px;
+    color: var(--ink-mute);
+    max-width: 760px;
+    margin: 0 auto 36px;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .btn-primary {
+    display: inline-block;
+    padding: 13px 28px;
+    background: linear-gradient(135deg, var(--teal), var(--teal-bright));
+    color: var(--navy-deep);
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 16px rgba(60,220,192,0.18);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(60,220,192,0.3);
+    text-decoration: none;
+  }
+
+  .btn-secondary {
+    display: inline-block;
+    padding: 13px 28px;
+    border: 1px solid rgba(255,255,255,0.18);
+    color: var(--ink);
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 500;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .btn-secondary:hover {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.28);
+    text-decoration: none;
+  }
+
+  /* ── Principles strip ── */
+  .principles {
+    background: var(--navy);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 28px 32px;
+  }
+
+  .principles ul {
+    list-style: none;
+    max-width: 1000px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+  }
+
+  .principles li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 14px;
+    color: var(--ink-mute);
+  }
+
+  .principles li strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .principles .icon {
+    color: var(--teal-bright);
+    font-size: 18px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  /* ── Live demo ── */
+  .live-demo {
+    padding: 80px 32px 24px;
+    max-width: 1000px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .demo-lede {
+    color: var(--ink-mute);
+    font-size: 16px;
+    max-width: 760px;
+    margin: 0 auto 36px;
+  }
+
+  .demo-lede code {
+    font-family: 'Menlo', 'Consolas', monospace;
+    font-size: 13px;
+    color: var(--teal-bright);
+    background: rgba(0,0,0,0.3);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+
+  .theme-switcher {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .theme-switcher-label {
+    font-size: 13px;
+    color: var(--ink-mute);
+    margin-right: 4px;
+  }
+
+  .theme-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: var(--tile);
+    border: 1px solid var(--line);
+    border-radius: 99px;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, transform 0.1s;
+  }
+
+  .theme-btn:hover {
+    border-color: rgba(60,220,192,0.4);
+    background: var(--navy-soft);
+  }
+
+  .theme-btn.is-active {
+    border-color: var(--teal-bright);
+    box-shadow: 0 0 0 3px rgba(60,220,192,0.12);
+  }
+
+  .theme-btn:active { transform: scale(0.97); }
+
+  .theme-btn .swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 99px;
+    border: 1px solid;
+    flex-shrink: 0;
+  }
+
+  .demo-frame {
+    background: var(--navy);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(60,220,192,0.05);
+    position: relative;
+    transition: background 0.3s;
+    /* User-resizable: drag the bottom-right grip to resize the demo in both
+       directions. inline-block + the parent's text-align:center keep it
+       centered in the column at whatever size it's dragged to. overflow:hidden
+       keeps the rounded corners clean while the iframe fills the box. */
+    display: inline-block;
+    resize: both;
+    overflow: hidden;
+    width: 100%;            /* full column to start; user can drag narrower */
+    height: 400px;          /* ~360px iframe + 20px top/bottom padding */
+    min-height: 200px;
+    max-height: 720px;
+    min-width: 280px;
+    max-width: 100%;
+  }
+
+  .demo-frame::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at top, rgba(60,220,192,0.06) 0%, transparent 60%);
+    pointer-events: none;
+    border-radius: 14px;
+  }
+
+  .demo-frame iframe {
+    border: none;
+    width: 100%;
+    height: 100%;           /* fill the (now resizable) frame */
+    display: block;
+    position: relative;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 0.4s ease-out;
+  }
+
+  .demo-frame.is-loaded iframe { opacity: 1; }
+
+  .demo-skeleton {
+    position: absolute;
+    inset: 20px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 1;
+    transition: opacity 0.4s ease-out;
+  }
+
+  .demo-frame.is-loaded .demo-skeleton { opacity: 0; }
+
+  .demo-skeleton::before {
+    content: 'Loading\2026';
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+    font-size: 15px;
+    letter-spacing: 0.04em;
+    color: rgba(60,220,192,0.7);
+    animation: skeleton-pulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes skeleton-pulse {
+    0%, 100% { opacity: 0.4; }
+    50%      { opacity: 0.85; }
+  }
+
+  /* Reduced-motion respected — decorative transitions off, meaningful ones kept. */
+  @media (prefers-reduced-motion: reduce) {
+    .demo-skeleton::before { animation: none; opacity: 0.6; }
+    .btn-primary, .btn-secondary, .theme-btn, .card, .card-link {
+      transition: none !important;
+    }
+    .btn-primary:hover { transform: none; }
+    .theme-btn:active { transform: none; }
+  }
+
+  .demo-source {
+    margin-top: 18px;
+    text-align: left;
+    max-width: 760px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .demo-source summary {
+    color: var(--teal-bright);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 8px 0;
+    list-style: none;
+    text-align: center;
+  }
+
+  .demo-source summary::-webkit-details-marker { display: none; }
+
+  .demo-source summary::before {
+    content: '▸ ';
+    transition: transform 0.15s;
+    display: inline-block;
+  }
+
+  .demo-source[open] summary::before {
+    transform: rotate(90deg);
+  }
+
+  .demo-source pre {
+    background: var(--navy-deep);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-top: 10px;
+    overflow-x: auto;
+    font-family: 'Menlo', 'Consolas', monospace;
+    font-size: 13px;
+    color: var(--ink);
+    line-height: 1.6;
+  }
+
+  .demo-source .hl-comment { color: var(--ink-mute); font-style: italic; }
+  .demo-source .hl-str     { color: var(--teal-bright); }
+
+  /* ── Install: the visitor's actual question after the demo ── */
+  .install {
+    padding: 64px 32px;
+    background: var(--navy);
+    border-top: 1px solid var(--line);
+    scroll-margin-top: 16px;
+  }
+
+  .install-inner { max-width: 1000px; margin: 0 auto; }
+
+  .install .section-eyebrow,
+  .install .section-title { text-align: center; }
+  .install .section-title { margin-bottom: 16px; }
+
+  .install-lede {
+    text-align: center;
+    color: var(--ink-mute);
+    max-width: 760px;
+    margin: 0 auto 48px;
+  }
+
+  .install-steps {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    counter-reset: step;
+  }
+
+  .install-steps li {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    background: var(--tile);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px 28px;
+    transition: border-color 0.15s;
+  }
+
+  .install-steps li:hover { border-color: rgba(60,220,192,0.3); }
+
+  .step-num {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--teal), var(--teal-bright));
+    color: var(--navy-deep);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .step-body { flex: 1; min-width: 0; }
+
+  .step-body h4 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 6px;
+    letter-spacing: -0.01em;
+  }
+
+  .step-body p {
+    font-size: 15px;
+    color: var(--ink-mute);
+  }
+
+  .step-body p code {
+    font-family: 'Menlo', 'Consolas', monospace;
+    font-size: 13px;
+    color: var(--teal-bright);
+    background: rgba(0,0,0,0.3);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+
+  .step-body pre {
+    background: var(--navy-deep);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-top: 12px;
+    overflow-x: auto;
+    font-family: 'Menlo', 'Consolas', monospace;
+    font-size: 12px;
+    color: var(--ink);
+    line-height: 1.55;
+  }
+
+  .install-foot {
+    text-align: center;
+    margin-top: 36px;
+    color: var(--ink-mute);
+    font-size: 15px;
+  }
+
+  .install-foot a {
+    color: var(--teal-bright);
+    font-weight: 600;
+  }
+
+  .install-foot .muted-link {
+    color: var(--ink-mute);
+    font-weight: 500;
+    text-decoration: underline;
+    text-decoration-color: rgba(155,169,184,0.3);
+    text-underline-offset: 3px;
+  }
+
+  .install-foot .muted-link:hover { color: var(--ink); text-decoration-color: var(--ink); }
+
+  /* ── Presentations ── */
+  .presentations {
+    padding: 80px 32px;
+  }
+
+  .section-eyebrow {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--teal-bright);
+    margin-bottom: 12px;
+  }
+
+  .section-title {
+    text-align: center;
+    font-size: 32px;
+    font-weight: 300;
+    margin-bottom: 48px;
+    letter-spacing: -0.01em;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .card {
+    background: var(--tile);
+    border-radius: 14px;
+    padding: 28px;
+    border: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+
+  .card:hover {
+    border-color: rgba(60,220,192,0.3);
+  }
+
+  .card-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 4px 10px;
+    border-radius: 99px;
+    align-self: flex-start;
+  }
+
+  .badge-live { background: var(--pill-bg); color: var(--pill-text); }
+  .badge-soon { background: var(--soon-bg); color: var(--soon-text); }
+
+  .card h4 {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+
+  .card p {
+    font-size: 14px;
+    color: var(--ink-mute);
+    flex: 1;
+  }
+
+  .card-embed {
+    background: var(--navy-deep);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-family: 'Menlo', 'Consolas', monospace;
+    font-size: 12px;
+    color: var(--ink-mute);
+    word-break: break-all;
+    line-height: 1.55;
+  }
+
+  .card-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--teal-bright);
+    margin-top: 2px;
+  }
+
+  .card-link:hover {
+    text-decoration: none;
+  }
+
+  .card.coming-soon { opacity: 0.7; }
+
+  /* ── Params ── */
+  .params {
+    background: var(--navy);
+    padding: 80px 32px;
+    border-top: 1px solid var(--line);
+  }
+
+  .params-inner {
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .params > p {
+    text-align: center;
+    color: var(--ink-mute);
+    margin-bottom: 40px;
+    max-width: 760px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .param-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+  }
+
+  .param-group {
+    background: var(--tile);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 24px;
+  }
+
+  .param-group h5 {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--teal-bright);
+    margin-bottom: 16px;
+  }
+
+  .param-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 14px;
+  }
+
+  .param-row:last-child { margin-bottom: 0; }
+
+  .param-row code {
+    font-family: 'Menlo', 'Consolas', monospace;
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--navy-deep);
+    padding: 3px 8px;
+    border-radius: 4px;
+    align-self: flex-start;
+  }
+
+  .param-row span {
+    font-size: 13px;
+    color: var(--ink-mute);
+  }
+
+  /* ── Closing CTA ── banded closer; lands on deep (params above
+     is navy, so alternation continues). */
+  .cta {
+    background: var(--navy-deep);
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    padding: 56px 32px; text-align: center;
+  }
+  .cta h3 { font-size: 28px; font-weight: 300; margin-bottom: 14px; letter-spacing: -0.01em; display: inline-block; position: relative; }
+  .cta h3 > span { position: relative; z-index: 1; }
+  .cta p { font-size: 16px; color: var(--ink-mute); max-width: 760px; margin: 0 auto 28px; line-height: 1.7; }
+
+  /* ── Footer ── */
+  footer {
+    background: var(--navy);
+    border-top: 1px solid var(--line);
+    padding: 10px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-family: 'Menlo', 'Consolas', monospace;
+    font-size: 11px;
+    color: var(--ink-mute);
+    flex-wrap: wrap;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  footer p { margin: 0; }
+  .footer-org { color: var(--ink-mute); }
+
+  .footer-links { display: flex; gap: 10px; align-items: center; }
+  .footer-links a { color: var(--ink-mute); transition: color 0.15s; }
+  .footer-links a:hover { color: var(--teal-bright); text-decoration: none; }
+
+  .footer-stats {
+    display: flex;
+    gap: 10px;
+    opacity: 0.7;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .footer-stats .stat-sep { opacity: 0.5; }
+
+  /* ── Mobile ── */
+  @media (max-width: 640px) {
+    header { height: auto; padding: 12px 18px; flex-wrap: wrap; }
+    header nav { width: 100%; margin: 0; gap: 16px; }
+    .hero { padding: 44px 18px 56px; }
+    .hero h2 { font-size: 32px; }
+    .hero p { font-size: 16px; }
+    .live-demo, .install, .presentations, .params, footer { padding-left: 18px; padding-right: 18px; }
+    .install-steps li { flex-direction: column; gap: 14px; padding: 20px; }
+    .step-num { width: 36px; height: 36px; font-size: 17px; }
+    .demo-frame { height: 540px; }   /* taller default on mobile — apps reflow to fewer columns */
+    .section-title { font-size: 26px; }
+  }
+</style>
+</head>
+<body>
+
+<a href="#main" class="skip-link">Skip to main content</a>
+
+<header>
+  <h1>Gapps Embed</h1>
+  <span class="ver">v1.0.0</span>
+  <nav aria-label="Primary">
+    <a href="gapps-launcher.html">Launcher</a>
+    <a href="gapps-builder.html">Builder</a>
+    <a href="https://github.com/benchkit/gapps-embed">GitHub</a>
+  </nav>
+</header>
+
+<!-- Content well: the single scroll region (app-shell) -->
+<div class="content-well" id="content-well">
+
+<section class="hero" id="main">
+  <div class="status-row">
+    <div class="status-pill">Now live · v1.0.0</div>
+  </div>
+  <h2>Embed <strong>Google apps</strong> anywhere.</h2>
+  <p>A lightweight, themeable toolkit for embedding a Google apps grid on any website — no build step, one iframe, zero tracking.</p>
+  <div class="hero-actions">
+    <a href="gapps-launcher.html" class="btn-primary">Try the launcher</a>
+    <a href="gapps-builder.html" class="btn-secondary">Build your embed</a>
+    <a href="#install" class="btn-secondary">Install in 3 steps</a>
+  </div>
+</section>
+
+<section class="principles">
+  <ul>
+    <li><span class="icon">⚡</span><span><strong>No build step.</strong> Drop in an iframe and you're done.</span></li>
+    <li><span class="icon">🔓</span><span><strong>Free &amp; libre.</strong> MIT-licensed, zero monetization.</span></li>
+    <li><span class="icon">🖥</span><span><strong>Runs on the client.</strong> No server, no tracking, no telemetry.</span></li>
+    <li><span class="icon">🎨</span><span><strong>Themeable.</strong> Query string or <code style="background:rgba(0,0,0,0.3);padding:1px 6px;border-radius:3px;font-size:12px;color:var(--teal-bright);">postMessage</code>.</span></li>
+  </ul>
+</section>
+
+<section class="live-demo">
+  <div class="section-eyebrow">Live, on this page</div>
+  <h3 class="section-title">Themed to blend in.</h3>
+  <p class="demo-lede">This isn't a screenshot. The grid below is an actual <code>&lt;iframe&gt;</code> running the launcher with three query-string params — <code>tile</code>, <code>text</code>, and <code>hover</code> — set to the colors of this site. Hover an icon — or drag the bottom-right corner to resize it.</p>
+
+  <div class="theme-switcher" role="group" aria-label="Theme presets">
+    <span class="theme-switcher-label">Re-theme live</span>
+    <button type="button" class="theme-btn" data-theme="teal"
+            data-tile="#1E3147" data-text="#3CDCC0" data-hover="#3CDCC0" data-hover-text="#0E1B2A">
+      <span class="swatch" style="background:linear-gradient(135deg,#1A2C42 0%,#1A2C42 50%,#3CDCC0 50%,#3CDCC0 100%);border-color:#3CDCC0"></span>
+      Teal flip
+    </button>
+    <button type="button" class="theme-btn" data-theme="google"
+            data-tile="#ffffff" data-text="#3c4043" data-hover="#f1f3f4"
+            data-frame-bg="#ffffff">
+      <span class="swatch" style="background:#ffffff;border-color:#dadce0"></span>
+      Google default
+    </button>
+    <button type="button" class="theme-btn" data-theme="solarized"
+            data-tile="#FDF6E3" data-text="#586E75" data-hover="#EEE8D5">
+      <span class="swatch" style="background:#FDF6E3;border-color:#93A1A1"></span>
+      Solarized
+    </button>
+    <button type="button" class="theme-btn" data-theme="github-dark"
+            data-tile="#0D1117" data-text="#C9D1D9" data-hover="#161B22">
+      <span class="swatch" style="background:#0D1117;border-color:#30363D"></span>
+      GitHub Dark
+    </button>
+  </div>
+
+  <div class="demo-frame" id="demo-frame">
+    <div class="demo-skeleton" aria-hidden="true"></div>
+    <iframe
+      id="demo-iframe"
+      src="gapps-launcher.html?tile=%231E3147&amp;text=%233CDCC0&amp;hover=%233CDCC0&amp;texthover=%230E1B2A"
+      title="Gapps Embed launcher — themed demo"
+      loading="lazy"
+      onload="document.getElementById('demo-frame').classList.add('is-loaded')"></iframe>
+  </div>
+
+  <details class="demo-source">
+    <summary>See the postMessage code</summary>
+<pre><code><span class="hl-comment">// Re-theme the launcher live — no reload, no query-string rebuild</span>
+iframe.contentWindow.postMessage({
+  type: <span class="hl-str">'gapps-embed-theme'</span>,
+  tileBg:         <span class="hl-str">'#1E3147'</span>,  <span class="hl-comment">// muted navy at rest</span>
+  hoverBg:        <span class="hl-str">'#3CDCC0'</span>,  <span class="hl-comment">// brighten to teal on hover</span>
+  textColor:      <span class="hl-str">'#3CDCC0'</span>,  <span class="hl-comment">// teal label at rest</span>
+  textColorHover: <span class="hl-str">'#0E1B2A'</span>   <span class="hl-comment">// flip to navy on the lit tile</span>
+}, <span class="hl-str">'*'</span>);</code></pre>
+  </details>
+</section>
+
+<script>
+  (function() {
+    var iframe = document.getElementById('demo-iframe');
+    var buttons = document.querySelectorAll('.theme-btn');
+
+    var frame = document.querySelector('.demo-frame');
+
+    function applyTheme(btn) {
+      buttons.forEach(function(b) { b.classList.remove('is-active'); });
+      btn.classList.add('is-active');
+
+      frame.style.background = btn.dataset.tile;
+
+      iframe.contentWindow.postMessage({
+        type: 'gapps-embed-theme',
+        tileBg:         btn.dataset.tile,
+        hoverBg:        btn.dataset.hover,
+        textColor:      btn.dataset.text,
+        textColorHover: btn.dataset.hoverText || btn.dataset.text
+      }, '*');
+    }
+
+    buttons.forEach(function(btn) {
+      btn.addEventListener('click', function() { applyTheme(btn); });
+    });
+
+    // Escape: if a theme button is focused, reset to the default theme.
+    // Otherwise blur whatever's focused — clears stuck focus rings.
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      var active = document.activeElement;
+      var isThemeBtn = active && active.classList && active.classList.contains('theme-btn');
+      if (isThemeBtn) {
+        applyTheme(buttons[0]); // first button = default theme
+      }
+      if (active && active.blur) active.blur();
+    });
+  })();
+</script>
+
+<!-- ──────────── Install: the visitor's actual question after the demo ──────────── -->
+<section class="install" id="install">
+  <div class="install-inner">
+    <div class="section-eyebrow">How to use it</div>
+    <h3 class="section-title">Three steps. No build, no install, no account.</h3>
+    <p class="install-lede">If you just played with the demo above and want it on your site, here's the whole process.</p>
+
+    <ol class="install-steps">
+      <li>
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h4>Pick your apps, theme, and size</h4>
+          <p>Open the <a href="gapps-builder.html">Builder</a>, choose which apps to show, pick a preset theme or fine-tune the colors. Drag the preview's bottom-right corner to the height that fits your layout — the live size shows as you drag.</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h4>Copy the embed code</h4>
+          <p>Hit <strong>Copy embed code</strong>. You get a full <code>&lt;iframe&gt;</code> snippet with your apps, theme, and the height you dragged to all baked in — width stays <code>100%</code> so it flexes to fit wherever you paste it.</p>
+          <pre><code>&lt;iframe src="https://benchkit.github.io/gapps-embed/gapps-launcher.html?apps=mail,drive,docs&amp;tile=%23ffffff"
+        style="border:none; width:100%; height:520px;"&gt;&lt;/iframe&gt;</code></pre>
+          <p style="margin-top:10px;font-size:13px;color:var(--ink-mute);">This Pages URL always serves the latest release. For production, pin to a version with a CDN — e.g. <code style="font-size:12px;color:var(--teal-bright);">cdn.jsdelivr.net/gh/benchkit/gapps-embed@v1.0.0/…</code></p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h4>Paste it into your site</h4>
+          <p>Anywhere HTML can go — your CMS, a static page, an intranet portal, a Notion embed. It just works. Runs entirely in your visitor's browser. Nothing to install, nothing to host, nothing to maintain.</p>
+        </div>
+      </li>
+    </ol>
+
+    <p class="install-foot">
+      That's it. <a href="gapps-builder.html">Open the Builder</a> to get started, or
+      <a href="https://github.com/benchkit/gapps-embed" class="muted-link">read the source on GitHub</a>
+      if you'd rather self-host.
+    </p>
+  </div>
+</section>
+
+<section class="presentations">
+  <div class="section-eyebrow">The toolkit</div>
+  <h3 class="section-title">Three presentations</h3>
+  <div class="cards">
+
+    <div class="card">
+      <span class="card-badge badge-live">Live — v1.0.0</span>
+      <h4>Launcher</h4>
+      <p>Plain icon grid, identical in appearance to Google's own app launcher. Drop it into a sidebar or panel.</p>
+      <div class="card-embed">&lt;iframe src="…/gapps-launcher.html"&gt;&lt;/iframe&gt;</div>
+      <a href="gapps-launcher.html" class="card-link">Open launcher</a>
+    </div>
+
+    <div class="card coming-soon">
+      <span class="card-badge badge-soon">Coming — v1.1.0</span>
+      <h4>Spotlight</h4>
+      <p>Card grid with app name, description, and a "Learn more" link. Styled after Google Workspace's product spotlight.</p>
+      <div class="card-embed">&lt;iframe src="…/gapps-spotlight.html"&gt;&lt;/iframe&gt;</div>
+    </div>
+
+    <div class="card coming-soon">
+      <span class="card-badge badge-soon">Coming — v1.2.0</span>
+      <h4>Menu</h4>
+      <p>A waffle button that opens a Google-style popover panel. Embed as an iframe or inject directly with <code style="font-size:12px;color:var(--teal-bright);">loader.js</code>.</p>
+      <div class="card-embed">&lt;iframe src="…/gapps-menu.html"&gt;&lt;/iframe&gt;</div>
+    </div>
+
+  </div>
+</section>
+
+<section class="params">
+  <div class="params-inner">
+    <div class="section-eyebrow">Configuration</div>
+    <h3 class="section-title">Query-string options</h3>
+    <p>All three presentations share the same parameters. Theme it, filter it, and point it at your Workspace domain.</p>
+
+    <div class="param-grid">
+
+      <div class="param-group">
+        <h5>Filter</h5>
+        <div class="param-row">
+          <code>?apps=mail,drive,docs</code>
+          <span>Show specific apps in that order</span>
+        </div>
+        <div class="param-row">
+          <code>?category=communication</code>
+          <span>Show apps in one or more categories</span>
+        </div>
+        <div class="param-row">
+          <code>?filter=workspace</code>
+          <span>Show only workspace-tagged apps</span>
+        </div>
+      </div>
+
+      <div class="param-group">
+        <h5>Auth</h5>
+        <div class="param-row">
+          <code>?domain=example.com</code>
+          <span>Rewrite URLs for your Workspace domain</span>
+        </div>
+        <div class="param-row">
+          <code>?custom=mail,calendar</code>
+          <span>Use https://app.domain/ for these apps</span>
+        </div>
+      </div>
+
+      <div class="param-group">
+        <h5>Theme</h5>
+        <div class="param-row">
+          <code>?tile=%23ffffff</code>
+          <span>Tile background color</span>
+        </div>
+        <div class="param-row">
+          <code>?text=%23202124</code>
+          <span>Label text color</span>
+        </div>
+        <div class="param-row">
+          <code>?hover=%23f1f3f4</code>
+          <span>Hover state background</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section class="cta">
+  <h3><span>Drop it in and go.</span></h3>
+  <p>Gapps Embed is free, libre, and runs entirely in your browser — no build step, no server, no tracking. Open the source, fork it, or self-host.</p>
+  <a href="https://github.com/benchkit/gapps-embed" class="btn-primary">View on GitHub</a>
+</section>
+
+</div><!-- /.content-well -->
+
+<footer>
+  <p class="footer-org">Gapps Embed · 2026 · MIT · Free, libre, local</p>
+  <p class="footer-links">
+    <a href="https://github.com/benchkit/gapps-embed">Source</a>
+    <span class="stat-sep">·</span>
+    <a href="https://github.com/benchkit/gapps-embed/issues">Issues</a>
+    <span class="stat-sep">·</span>
+    <a href="https://github.com/benchkit/gapps-embed/blob/main/LICENSE">License</a>
+  </p>
+  <p class="footer-stats" aria-live="polite">
+    <span class="stat" id="stat-weight">— KB</span>
+    <span class="stat-sep">·</span>
+    <span class="stat" id="stat-requests">— requests</span>
+    <span class="stat-sep">·</span>
+    <span class="stat">0 cookies</span>
+    <span class="stat-sep">·</span>
+    <span class="stat">0 trackers</span>
+  </p>
+</footer>
+
+<script>
+  (function () {
+    function update() {
+      try {
+        var entries = performance.getEntriesByType('resource');
+        var bytes = 0;
+        entries.forEach(function (e) {
+          bytes += e.transferSize || e.encodedBodySize || 0;
+        });
+        var nav = performance.getEntriesByType('navigation')[0];
+        if (nav) bytes += nav.transferSize || nav.encodedBodySize || 0;
+
+        var ownRequests = entries.filter(function (e) {
+          return e.name.indexOf(location.origin) === 0;
+        }).length + 1;
+
+        var w = document.getElementById('stat-weight');
+        var r = document.getElementById('stat-requests');
+        if (w && bytes > 0) w.textContent = (bytes / 1024).toFixed(1) + ' KB';
+        if (r) r.textContent = ownRequests + ' request' + (ownRequests === 1 ? '' : 's');
+      } catch (e) { /* old browser — leave the dashes */ }
+    }
+    if (document.readyState === 'complete') update();
+    else window.addEventListener('load', update);
+  })();
+</script>
+
+</body>
+</html>
