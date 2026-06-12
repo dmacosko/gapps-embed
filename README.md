@@ -1,4 +1,4 @@
-[Gapps Embed](https://github.com/benchkit/gapps-embed) · **README** · [Quick start](#quick-start) · [Configuration](#configuration-via-query-string)
+[Gapps Embed](https://github.com/benchkit-labs/gapps-embed) · **README** · [Quick start](#quick-start) · [Configuration](#configuration-via-query-string)
 
 ---
 
@@ -25,7 +25,7 @@ Static HTML + JavaScript. No accounts. No analytics. No server-side anything.
 ## Quick start
 
 ```html
-<iframe src="https://benchkit.github.io/gapps-embed/gapps-launcher.html"
+<iframe src="https://benchkit-labs.github.io/gapps-embed/gapps-launcher.html"
         style="border: none; width: 100%; height: 600px;"></iframe>
 ```
 
@@ -33,7 +33,7 @@ That's it. You now have a Google apps grid on your page, served from GitHub Page
 
 The Pages URL always tracks the latest release. For production, pin to a tagged version instead so the embed never changes underneath you — see [Pinning to a version](#pinning-to-a-version).
 
-**Live demo, themed examples, and an interactive URL builder:** [benchkit.github.io/gapps-embed](https://benchkit.github.io/gapps-embed/)
+**Live demo, themed examples, and an interactive URL builder:** [benchkit-labs.github.io/gapps-embed](https://benchkit-labs.github.io/gapps-embed/)
 
 ## Configuration via query string
 
@@ -93,16 +93,16 @@ window.addEventListener('message', e => {
 
 ## Pinning to a version
 
-The GitHub Pages URL (`benchkit.github.io/gapps-embed/`) always serves the latest `main`, so an embed pointed at it can change when a new version ships. For production, pin to a tagged release through a versioned CDN instead:
+The GitHub Pages URL (`benchkit-labs.github.io/gapps-embed/`) always serves the latest `main`, so an embed pointed at it can change when a new version ships. For production, pin to a tagged release through a versioned CDN instead:
 
 **Option 1: jsDelivr (fastest, recommended)**
 ```html
-<iframe src="https://cdn.jsdelivr.net/gh/benchkit/gapps-embed@v1.0.0/gapps-launcher.html">
+<iframe src="https://cdn.jsdelivr.net/gh/benchkit-labs/gapps-embed@v1.0.0/gapps-launcher.html">
 ```
 
 **Option 2: raw.githack.com**
 ```html
-<iframe src="https://rawcdn.githack.com/benchkit/gapps-embed/v1.0.0/gapps-launcher.html">
+<iframe src="https://rawcdn.githack.com/benchkit-labs/gapps-embed/v1.0.0/gapps-launcher.html">
 ```
 
 **Option 3: unpkg**
@@ -119,7 +119,7 @@ All three CDNs cache a tagged release indefinitely, so a pinned embed is frozen 
 You don't need a CDN. Clone the repo, edit `src/apps.js` to add/remove/relabel apps, and serve the files from any static host:
 
 ```bash
-git clone https://github.com/benchkit/gapps-embed.git
+git clone https://github.com/benchkit-labs/gapps-embed.git
 cd gapps-embed
 # edit src/apps.js if you want a custom app list
 python -m http.server 8080
