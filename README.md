@@ -25,15 +25,15 @@ Static HTML + JavaScript. No accounts. No analytics. No server-side anything.
 ## Quick start
 
 ```html
-<iframe src="https://benchkit-labs.github.io/gapps-embed/gapps-launcher.html"
+<iframe src="https://gapps-embed.benchkit-labs.dev/gapps-launcher.html"
         style="border: none; width: 100%; height: 600px;"></iframe>
 ```
 
-That's it. You now have a Google apps grid on your page, served from GitHub Pages.
+That's it. You now have a Google apps grid on your page, served as a static site.
 
-The Pages URL always tracks the latest release. For production, pin to a tagged version instead so the embed never changes underneath you — see [Pinning to a version](#pinning-to-a-version).
+This URL always tracks the latest release. For production, pin to a tagged version instead so the embed never changes underneath you — see [Pinning to a version](#pinning-to-a-version).
 
-**Live demo, themed examples, and an interactive URL builder:** [benchkit-labs.github.io/gapps-embed](https://benchkit-labs.github.io/gapps-embed/)
+**Live demo, themed examples, and an interactive URL builder:** [gapps-embed.benchkit-labs.dev](https://gapps-embed.benchkit-labs.dev/)
 
 ## Configuration via query string
 
@@ -93,7 +93,7 @@ window.addEventListener('message', e => {
 
 ## Pinning to a version
 
-The GitHub Pages URL (`benchkit-labs.github.io/gapps-embed/`) always serves the latest `main`, so an embed pointed at it can change when a new version ships. For production, pin to a tagged release through a versioned CDN instead:
+The live site URL (`gapps-embed.benchkit-labs.dev`) always serves the latest `main`, so an embed pointed at it can change when a new version ships. For production, pin to a tagged release through a versioned CDN instead:
 
 **Option 1: jsDelivr (fastest, recommended)**
 ```html
