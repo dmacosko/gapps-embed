@@ -87,6 +87,15 @@
 
   header .spacer { flex: 1; }
 
+  header .org-link {
+    font-size: 13px;
+    color: #9BA9B8;
+    text-decoration: none;
+    margin-right: 16px;
+    transition: color 0.15s;
+  }
+  header .org-link:hover { color: #E6EEF5; }
+
   header .header-actions {
     display: flex;
     gap: 8px;
@@ -414,6 +423,7 @@
   </a>
   <span class="page-title">URL Builder</span>
   <div class="spacer"></div>
+  <a href="https://benchkit-labs.dev" class="org-link">Benchkit Labs</a>
   <div class="header-actions">
     <button class="btn-secondary" onclick="resetForm()">Reset</button>
     <button class="btn-secondary" onclick="copyURL()">Copy URL</button>
